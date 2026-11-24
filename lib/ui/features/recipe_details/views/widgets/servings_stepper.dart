@@ -25,13 +25,13 @@ class ServingsStepper extends StatelessWidget {
         children: [
           _StepButton(
             icon: Icons.remove,
-            tooltip: 'Fewer servings',
+            tooltip: 'Decrease amounts',
             onPressed: onDecrement,
           ),
           Container(width: 1, height: 20, color: AppColors.textPrimary),
           _StepButton(
             icon: Icons.add,
-            tooltip: 'More servings',
+            tooltip: 'Increase amounts',
             onPressed: onIncrement,
           ),
         ],

@@ -1,17 +1,15 @@
 import 'package:flutter/foundation.dart';
 
 /// A recept tiszta domain modellje. A repository feletti retegek mind ezt
-/// hasznaljak, a nyers API formatumot sosem latjak.
+/// hasznaljak, a nyers API formatumot (MealDto) sosem latjak.
 @immutable
 class Recipe {
   const Recipe({
     required this.id,
     required this.title,
-    required this.mealType,
+    required this.category,
+    required this.area,
     required this.imageUrl,
-    required this.cookingMinutes,
-    required this.servings,
-    required this.nutrition,
     required this.ingredients,
     required this.steps,
   });
@@ -19,14 +17,14 @@ class Recipe {
   final String id;
   final String title;
 
-  /// Breakfast, Lunch, Dinner vagy Snack (reggeli, ebed, vacsora, nasi).
-  final String mealType;
-  final String imageUrl;
-  final int cookingMinutes;
+  /// Pl. "Dessert" vagy "Chicken"; ha az API nem kuldi, "Other".
+  final String category;
 
-  /// Hany adagra vonatkoznak a hozzavalok mennyisegei.
-  final int servings;
-  final Nutrition nutrition;
+  /// A konyha szarmazasa, pl. "Japanese"; null, ha ismeretlen.
+  final String? area;
+
+  /// Null, ha nincs kep; ilyenkor a UI helyettesito kepet mutat.
+  final String? imageUrl;
   final List<Ingredient> ingredients;
   final List<String> steps;
 
@@ -37,33 +35,12 @@ class Recipe {
   int get hashCode => id.hashCode;
 }
 
-/// Tapertekek egy adagra.
-@immutable
-class Nutrition {
-  const Nutrition({
-    required this.calories,
-    required this.proteinGrams,
-    required this.carbsGrams,
-    required this.fatGrams,
-  });
-
-  final int calories;
-  final int proteinGrams;
-  final int carbsGrams;
-  final int fatGrams;
-}
-
 @immutable
 class Ingredient {
-  const Ingredient({
-    required this.name,
-    required this.quantity,
-    required this.unit,
-  });
+  const Ingredient({required this.name, required this.measure});
 
   final String name;
 
-  /// Mennyiseg a recept alap adagszamara ([Recipe.servings]).
-  final double quantity;
-  final String unit;
+  /// Szabad szoveges mennyiseg az API-bol, pl. "100g" vagy "1/2 cup".
+  final String measure;
 }

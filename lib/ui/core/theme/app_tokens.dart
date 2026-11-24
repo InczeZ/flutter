@@ -17,6 +17,8 @@ abstract final class AppColors {
   static const textSecondary = Color(0xFF8E8E93);
   static const textDisabled = Color(0xFFC4C4C8);
 
+  static const favorite = Color(0xFFE5484D);
+
   static const macroFat = Color(0xFFFFB443);
   static const macroProtein = Color(0xFF3B82F6);
   static const macroCarbs = Color(0xFF7B61FF);

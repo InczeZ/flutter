@@ -1,51 +1,111 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../data/repositories/favorites_repository.dart';
 import '../../../../domain/models/recipe.dart';
+import '../../../../utils/result.dart';
 
 /// A kivalasztott [Recipe] a konstruktoron keresztul erkezik, igy egyetlen
-/// reszletek kepernyo szolgal ki minden receptet. A view model kezeli az
-/// adagszam leptetot, es ahhoz igazitja a hozzavalok mennyiseget.
+/// reszletek kepernyo szolgal ki minden receptet. A view model kezeli a
+/// kedvenc allapotot (a kozos FavoritesRepository-n at) es a mennyiseg
+/// szorzot, amellyel a hozzavalok mennyisegeit skalazzuk.
 class RecipeDetailsViewModel extends ChangeNotifier {
-  RecipeDetailsViewModel({required this.recipe}) : _servings = recipe.servings;
+  RecipeDetailsViewModel({
+    required this.recipe,
+    required FavoritesRepository favoritesRepository,
+  }) : _favoritesRepository = favoritesRepository {
+    _favoritesRepository.addListener(notifyListeners);
+  }
 
-  static const minServings = 1;
-  static const maxServings = 12;
+  static const minMultiplier = 1;
+  static const maxMultiplier = 8;
 
   final Recipe recipe;
+  final FavoritesRepository _favoritesRepository;
 
-  int _servings;
-  int get servings => _servings;
+  /// Az API nem adja meg az adagszamot, ezert a recept eredeti mennyiseget
+  /// szorozzuk (x1, x2, ...).
+  int _multiplier = minMultiplier;
+  int get multiplier => _multiplier;
 
-  bool get canDecrement => _servings > minServings;
-  bool get canIncrement => _servings < maxServings;
+  bool get canDecrement => _multiplier > minMultiplier;
+  bool get canIncrement => _multiplier < maxMultiplier;
 
-  void incrementServings() {
+  bool get isFavorite => _favoritesRepository.isFavorite(recipe.id);
+
+  Future<Result<void>> toggleFavorite() =>
+      _favoritesRepository.toggle(recipe.id);
+
+  void increment() {
     if (!canIncrement) return;
-    _servings++;
+    _multiplier++;
     notifyListeners();
   }
 
-  void decrementServings() {
+  void decrement() {
     if (!canDecrement) return;
-    _servings--;
+    _multiplier--;
     notifyListeners();
   }
 
-  void resetServings() {
-    if (_servings == recipe.servings) return;
-    _servings = recipe.servings;
+  void reset() {
+    if (_multiplier == minMultiplier) return;
+    _multiplier = minMultiplier;
     notifyListeners();
   }
 
-  /// Az [ingredient] mennyisege az aktualis adagszamra, pl. "250 g".
-  String amountFor(Ingredient ingredient) {
-    final scaled = ingredient.quantity * _servings / recipe.servings;
-    return '${_formatQuantity(scaled)} ${ingredient.unit}'.trim();
+  /// Az [ingredient] mennyisege az aktualis szorzoval, pl. "200g" x2 ->
+  /// "400g". Ha a mennyiseg nem szammal kezdodik (pl. "To taste"),
+  /// valtozatlanul adjuk vissza.
+  String amountFor(Ingredient ingredient) =>
+      scaleMeasure(ingredient.measure, _multiplier);
+
+  @visibleForTesting
+  static String scaleMeasure(String measure, int multiplier) {
+    if (multiplier == 1) return measure;
+    final match = _leadingNumber.firstMatch(measure);
+    if (match == null) return measure;
+
+    final value = _parseNumber(match.group(1)!);
+    if (value == null) return measure;
+    return '${_format(value * multiplier)}${match.group(2)}';
   }
 
-  static String _formatQuantity(double value) {
+  /// Elol allo szam: egesz, tizedes, tort ("1/2") vagy vegyes tort ("1 1/2").
+  static final _leadingNumber =
+      RegExp(r'^\s*(\d+\s+\d+/\d+|\d+/\d+|\d+(?:[.,]\d+)?)(.*)$');
+
+  static double? _parseNumber(String text) {
+    final parts = text.trim().split(RegExp(r'\s+'));
+    var total = 0.0;
+    for (final part in parts) {
+      if (part.contains('/')) {
+        final pieces = part.split('/');
+        final numerator = double.tryParse(pieces.first);
+        final denominator = double.tryParse(pieces.last);
+        if (numerator == null || denominator == null || denominator == 0) {
+          return null;
+        }
+        total += numerator / denominator;
+      } else {
+        final value = double.tryParse(part.replaceAll(',', '.'));
+        if (value == null) return null;
+        total += value;
+      }
+    }
+    return total;
+  }
+
+  static String _format(double value) {
     if (value == value.roundToDouble()) return value.toInt().toString();
-    final text = value.toStringAsFixed(1);
-    return text.endsWith('.0') ? text.substring(0, text.length - 2) : text;
+    final text = value.toStringAsFixed(2);
+    return text
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+  }
+
+  @override
+  void dispose() {
+    _favoritesRepository.removeListener(notifyListeners);
+    super.dispose();
   }
 }

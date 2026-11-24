@@ -7,14 +7,15 @@ import '../theme/app_tokens.dart';
 class RecipeImage extends StatelessWidget {
   const RecipeImage({super.key, required this.url, this.semanticLabel});
 
-  final String url;
+  final String? url;
   final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    if (url.isEmpty) return const _Placeholder();
+    final src = url;
+    if (src == null || src.isEmpty) return const _Placeholder();
     return Image.network(
-      url,
+      src,
       fit: BoxFit.cover,
       semanticLabel: semanticLabel,
       loadingBuilder: (context, child, progress) =>

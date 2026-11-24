@@ -1,0 +1,89 @@
+MEAL PLANNER - ARCHITEKTURA
+
+Az app retegekre van bontva. Minden reteg csak az alatta levot ismeri.
+
+  UI (View)
+    |
+  ViewModel (allapotkezeles, ChangeNotifier)
+    |
+  Repository
+    |
+  Service
+    |
+  Adatforrasok: TheMealDB REST API, SharedPreferences
+
+
+RETEGEK
+
+1. UI reteg (lib/ui)
+   - Csak megjelenit es tovabbitja a felhasznalo muveleteit.
+   - Nem tudja, honnan jon az adat.
+   - Pl.: home_screen.dart, recipe_details_screen.dart, recipe_card.dart
+
+2. ViewModel / allapotkezeles (lib/ui/features/.../view_models)
+   - Tarolja a kepernyo allapotat: loading, success, empty, error.
+   - Itt van a kereses debounce-a es a retry.
+   - Pl.: home_view_model.dart, recipe_details_view_model.dart
+
+3. Repository reteg (lib/data/repositories)
+   - Egyetlen belepesi pont az adatokhoz.
+   - DTO -> domain modell atalakitas, cache, hibak atalakitasa.
+   - Pl.: recipe_repository.dart (absztrakt), recipe_repository_remote.dart,
+     favorites_repository.dart
+
+4. Service reteg (lib/data/services)
+   - Allapot nelkuli osztalyok, egy-egy adatforrast kezelnek.
+   - meal_db_api_service.dart: HTTP keresek Dio-val
+   - favorites_storage_service.dart: kedvencek mentese SharedPreferences-be
+
+
+MODELLEK
+
+- DTO (lib/data/models/meal_dto.dart): az API formatumat koveti
+  (idMeal, strMeal, strIngredient1..20).
+- Domain modell (lib/domain/models/recipe.dart): az app sajat Recipe osztalya,
+  ezt hasznalja minden reteg a repository felett.
+- A hibas rekordokat (nincs id vagy nev) a repository eldobja.
+
+
+ADATFOLYAMOK
+
+- Receptek betoltese:
+  HomeScreen -> HomeViewModel -> RecipeRepository -> cache vagy API -> Recipe lista
+
+- Kereses (debounce):
+  gepeles -> 400 ms varakozas -> egy API keres -> eredmeny
+  (egy regebbi keres keso valaszat eldobjuk)
+
+- Kedvencek:
+  sziv gomb -> FavoritesRepository -> SharedPreferences
+  -> minden feliratkozott kepernyo frissul (Home es Recipe is)
+
+
+ALLAPOTOK
+
+- loading: toltesjelzo
+- success: receptlista
+- empty:   "nincs talalat" uzenet
+- error:   hibauzenet + "Try again" gomb
+
+
+HIBAKEZELES
+
+- A Dio hibakat a repository AppException-ne alakitja
+  (noConnection, timeout, server, ...), lib/utils/app_exception.dart
+- A repository Result tipust ad vissza (lib/utils/result.dart),
+  nem dob kivetelt a UI fele.
+
+
+CACHE
+
+- Helye: a repository memoriaja (keresesi kifejezesenkent).
+- Cache first: egy mar lekert keresest nem kerunk le ujra.
+
+
+FUGGOSEGEK
+
+- Mindent egy helyen hozunk letre: lib/config/dependencies.dart (provider csomag)
+- A ViewModel a konstruktoron kapja a repository-t (dependency injection),
+  igy az API vagy a tarolo a UI modositasa nelkul cserelheto.
